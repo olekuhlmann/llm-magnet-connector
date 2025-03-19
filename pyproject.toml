@@ -1,0 +1,14 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "llm-magnet-connector"
+version = "0.1.0"
+authors = [{ name="Ole Kuhlmann", email="ole.kuhlmann@rwth-aachen.de" }]
+description = "Automates connecting two parts of a magnet model using LLMs"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "numpy",
+]
