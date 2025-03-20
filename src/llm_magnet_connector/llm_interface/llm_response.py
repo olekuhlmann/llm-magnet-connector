@@ -8,9 +8,9 @@ class OptimizerParameters:
     
     Attributes:
         order: The order of the curve.
-        ell [mm]: The length of the curve.
-        rbendmin [mm]: The minimum bending radius respected in the curve.
-        t1 [mm]: Edge regression constraint tolerance. Should be < 0.
+        ell: The length of the curve [mm].
+        rbendmin: The minimum bending radius respected in the curve [mm].
+        t1: Edge regression constraint tolerance. Should be < 0 [mm].
     """
     order: int
     ell: float
