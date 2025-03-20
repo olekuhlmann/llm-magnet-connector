@@ -1,6 +1,12 @@
 .vscode
 runs
 
+# Ignore all files in the assets folder except specific subfolders
+assets/*
+!assets/Initial_prompt/
+!assets/Scenario1/
+!assets/Scenario2/
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
