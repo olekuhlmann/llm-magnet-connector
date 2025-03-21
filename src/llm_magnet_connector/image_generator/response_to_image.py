@@ -14,12 +14,12 @@ class ResponseToImage:
     """
     def __init__(self, output_dir: str):
         # Ascending index for the image names (0a, 1a, ...)
-        self._image_index = 1
+        self.image_index = 1
         self._output_dir = output_dir
         # Create the output directory if it does not exist
         os.makedirs(output_dir, exist_ok=True)
         
-    def response_to_image(self, response: LLMResponse):
+    def response_to_image(self, response: LLMResponse) -> str:
         """
         This function converts a LLM response to the images used for the next re-prompt
         
@@ -30,7 +30,7 @@ class ResponseToImage:
             The path to the directory containing the generated images.
         """
         # create the output directory
-        new_dir_path = os.path.join(self._output_dir, str(self._image_index))
+        new_dir_path = os.path.join(self._output_dir, str(self.image_index))
         
         if os.path.exists(new_dir_path):
             print(f"[WARNING] Output directory {new_dir_path} already exists.");
@@ -38,8 +38,8 @@ class ResponseToImage:
             os.makedirs(new_dir_path)
         
         # generate images
-        CurveImageGenerator().generate_images(new_dir_path, optimizer_params=response.optimizer_parameters, index=self._image_index)
-        self._image_index += 1
+        CurveImageGenerator().generate_images(new_dir_path, optimizer_params=response.optimizer_parameters, index=self.image_index)
+        self.image_index += 1
         
         # annotate images
         annotate_images(new_dir_path,  new_dir_path)
