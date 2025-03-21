@@ -1,4 +1,4 @@
-# llm-magnet-connector
+# LLM Magnet Connector
 
 This application automates connecting two parts of a magnet model using LLMs.
 
