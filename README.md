@@ -26,7 +26,12 @@ venv\Scripts\activate.bat # On Windows
 pip install -e .
 ```
 
-4. Launch ```main.py```
+4. Create a `.env` file in the root folder with the required API keys:
+```python
+ANTHROPIC_API_KEY=your_api_key_here
+```
+
+5. Launch ```main.py```
 
 ## License
 

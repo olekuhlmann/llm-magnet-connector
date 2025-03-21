@@ -1,4 +1,5 @@
 .vscode
+.env
 runs
 
 # Ignore all files in the assets folder except specific subfolders
