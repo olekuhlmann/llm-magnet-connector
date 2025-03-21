@@ -1,17 +1,35 @@
+
+import os
+from datetime import datetime
+
 from llm_magnet_connector.image_generator import ResponseToImage
-from llm_magnet_connector.llm_interface import LLMResponse, OptimizerParameters, BadnessCriteria
-from llm_magnet_connector.llm_interface import get_initial_prompt, get_reprompt
+from llm_magnet_connector.llm_interface import AnthropicConversationManager, get_initial_prompt, OptimizerParameters
+from llm_magnet_connector.orchestrator import MainOrchestrator
 
-output_dir= "runs/001"
+def create_dir_with_timestamp(base_path) -> str:
+    """
+    Creates a directory with a timestamp as the name in human readable format.
+    
+    Args:
+        base_path (str): The parent directory of the new dir.
+        
+    Returns:
+        The path to the new directory
+    """
+    timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    new_dir = os.path.join(base_path, timestamp)
+    os.makedirs(new_dir)
+    return new_dir
 
-response = LLMResponse(badnessCriteria=BadnessCriteria(True, True, True, True), optimizer_parameters=OptimizerParameters(7, 80, 25, -6))
 
-res2img = ResponseToImage(output_dir)
-res2img.response_to_image(response)
-res2img.response_to_image(response)
+output_dir = "runs"
+output_dir = create_dir_with_timestamp(output_dir)
 
-print("-------------------")
-print(get_initial_prompt(OptimizerParameters(7, 80, 25, -6)))
-print("-------------------")
-print(get_reprompt(OptimizerParameters(7, 80, 25.5, -6), 1))
-print("-------------------")
+llm_manager = AnthropicConversationManager(max_prompts=5)
+image_generator = ResponseToImage(output_dir)
+
+max_iterations = 1 
+orchestrator = MainOrchestrator(llm_manager, image_generator, max_iterations)
+orchestrator.run(get_initial_prompt(OptimizerParameters(9, 80, 20, -8)), "assets/temp_test_scenario2")
+
+
