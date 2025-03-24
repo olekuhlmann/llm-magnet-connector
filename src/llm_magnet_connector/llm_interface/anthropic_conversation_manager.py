@@ -12,12 +12,13 @@ import mimetypes
 class AnthropicConversationManager(LLMConversationManager):
     """
     This class is a subclass of LLMConversationManager and is used to manage a conversation with the Anthropic API.
+    Will send the system prompt with the first prompt.
 
     Uses the environment variable ANTHROPIC_API_KEY.
     """
 
     def __init__(
-        self, output_token_limit=8000, context_window_limit=100_000, max_prompts=100
+        self, system_prompt = None, output_token_limit=8000, context_window_limit=100_000, max_prompts=100
     ):
         super().__init__(output_token_limit, context_window_limit, max_prompts)
         self.__client = anthropic.Client(api_key=os.environ.get("ANTHROPIC_API_KEY"))
@@ -26,6 +27,7 @@ class AnthropicConversationManager(LLMConversationManager):
             "type": "enabled",
             "budget_tokens": 2000,
         }
+        self._system_prompt = system_prompt
         self._temperature = 1  # must be 1 when thinking is enabled
         model_token_limit = 64000 if self._thinking else 8192
         self._max_tokens = (
@@ -39,16 +41,22 @@ class AnthropicConversationManager(LLMConversationManager):
             if context_window_limit == -1
             else min(context_window_limit, model_context_window_limit)
         )
+        min_context_window_limit = 18000
+        if self._context_window_limit < min_context_window_limit:
+            raise ValueError(
+                f"The context window limit must be at least {min_context_window_limit} tokens, as this has proven to be the number of tokens used up by the initial prompt, model answer, and one re-prompt. Please reconfigure."
+            )
         self._max_prompts = (
             max_prompts if max_prompts != -1 else 1000
         )  # hardcoded limit
 
-    def _send_message(self, messages: list):
+    def _send_message(self, messages: list, system_prompt: str | None = None):
         """
         Sends a message to the model and increments the prompt count.
 
         Args:
             messages ([Message]): The messages to send to the model (context and new message).
+            system_prompt (str): The system prompt to use. Should only be used for the first prompt.
 
         Raises:
             ValueError: If the maximum number of prompts has been reached.
@@ -63,6 +71,7 @@ class AnthropicConversationManager(LLMConversationManager):
         response = self.__client.messages.create(
             model=self._model,
             messages=messages,
+            system=system_prompt if system_prompt else anthropic.NOT_GIVEN,
             max_tokens=self._max_tokens,
             temperature=self._temperature,
             thinking=self._thinking,
@@ -95,13 +104,21 @@ class AnthropicConversationManager(LLMConversationManager):
         # Remove old messages if the context window size is exceeded
         self._manage_context()
 
-        # Send the message to the model
-        response = self._send_message(self._context)
+        # Send the message to the model, include system prompt if this is the first prompt
+        system_prompt = self._system_prompt if self._prompt_count == 0 else None
+        response = self._send_message(self._context, system_prompt=system_prompt)
 
+        # add response to context
+        self._context.append(
+            {"role": "assistant", "content": response.content}
+        )
+
+        # check stop reason
         if response.stop_reason != "end_turn":
             print(
                 f"[Warning]: The LLM answer was stopped due to stop reason '{response['stop_reason']}'."
             )
+            
 
         # TODO Return the response
         print(response)
