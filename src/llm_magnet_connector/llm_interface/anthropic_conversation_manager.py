@@ -68,8 +68,8 @@ class AnthropicConversationManager(LLMConversationManager):
             thinking=self._thinking,
         )
 
-        self._usage_input_tokens += response.usage.input_tokens
-        self._usage_output_tokens += response.usage.output_tokens
+        self.usage_input_tokens += response.usage.input_tokens
+        self.usage_output_tokens += response.usage.output_tokens
 
         return response
 

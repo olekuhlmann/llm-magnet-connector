@@ -68,6 +68,8 @@ class MainOrchestrator:
             print("LLM states conversation as terminated.")
 
         print("Conversation finished.")
+        print("Input tokens used:", self._llm_manager.usage_input_tokens)
+        print("Output tokens used:", self._llm_manager.usage_output_tokens)
 
     def is_terminated(self, response: LLMResponse) -> bool:
         """

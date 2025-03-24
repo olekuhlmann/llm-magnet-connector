@@ -16,8 +16,8 @@ class LLMConversationManager(ABC):
             context_window_limit (int): The token capacity used for the context window. If -1, the default limit of the model will be used.
             max_prompts (int): The maximum number of prompts that can be sent to the model. If -1, there is no limit.
         """
-        self._usage_input_tokens = 0
-        self._usage_output_tokens = 0
+        self.usage_input_tokens = 0
+        self.usage_output_tokens = 0
         self._prompt_count = 0
         self._context = []
     
