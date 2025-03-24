@@ -18,9 +18,9 @@ class AnthropicConversationManager(LLMConversationManager):
     """
 
     def __init__(
-        self, system_prompt = None, output_token_limit=8000, context_window_limit=100_000, max_prompts=100
+        self, logger, system_prompt = None, output_token_limit=8000, context_window_limit=100_000, max_prompts=100
     ):
-        super().__init__(output_token_limit, context_window_limit, max_prompts)
+        super().__init__(logger, system_prompt, output_token_limit, context_window_limit, max_prompts)
         self.__client = anthropic.Client(api_key=os.environ.get("ANTHROPIC_API_KEY"))
         self._model = "claude-3-7-sonnet-latest"
         self._thinking = {
@@ -115,13 +115,13 @@ class AnthropicConversationManager(LLMConversationManager):
 
         # check stop reason
         if response.stop_reason != "end_turn":
-            print(
-                f"[Warning]: The LLM answer was stopped due to stop reason '{response['stop_reason']}'."
+            self.logger.warning(
+                f"The LLM answer was stopped due to stop reason '{response['stop_reason']}'."
             )
             
 
         # TODO Return the response
-        print(response)
+        self.logger.info(response)
         return LLMResponse(
             optimizer_parameters=OptimizerParameters(-1, -1, -1, -1),
             badnessCriteria=BadnessCriteria(True, True, True, True),

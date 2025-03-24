@@ -6,7 +6,14 @@ class CurveImageGenerator:
     """
     This class is used to take a set of optimizer parameters and generate images from the curve created by those optimizer params.
     """
-    def __init__(self):
+    def __init__(self, logger):
+        """
+        Initializes the CurveImageGenerator.
+        
+        args:
+            logger: The logger to use.
+        """
+        self.logger = logger
         pass
     
     def _wait_for_images(self, dir, image_names: list):
@@ -19,12 +26,12 @@ class CurveImageGenerator:
         """
         dir_path = Path(dir)
         images_found = False
-        print(f"Waiting for images {image_names} in directory {dir}")
+        self.logger.info(f"Waiting for images {image_names} in directory {dir}")
         while not images_found:
             # check if images are there
             images_found = all((dir_path / f"{name}.png").exists() for name in image_names)
             time.sleep(0.01) # it is intentional here that the system also sleeps when the images were found
-        print("Images found.")
+        self.logger.info("Images found.")
             
     
     def generate_images(self, dir, optimizer_params: OptimizerParameters, index: int):
@@ -37,5 +44,5 @@ class CurveImageGenerator:
             index: Index for the image names.
         """
         # TODO stub implementation
-        print(f"Please apply optimizer params: {optimizer_params}")
+        self.logger.info(f"Please apply optimizer params: {optimizer_params}")
         self._wait_for_images(dir, [f"{index}a", f"{index}b", f"{index}c"])

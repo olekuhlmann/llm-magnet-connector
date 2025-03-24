@@ -10,9 +10,11 @@ class ResponseToImage:
     This class is used to convert a LLM response to the images used for the next re-prompt
     
     args:
+        logger: The logger to use.
         output_dir: The directory where the images will be saved. Dir will be created if it does not exist. The images corresponding to one curve will be saved in a folder named by the image index. Each image will be saved as a PNG file.
     """
-    def __init__(self, output_dir: str):
+    def __init__(self, logger, output_dir: str):
+        self.logger = logger
         # Ascending index for the image names (0a, 1a, ...); 1-indexed, will be incremented before use
         self.image_index = 0 
         self._output_dir = output_dir
@@ -34,12 +36,12 @@ class ResponseToImage:
         new_dir_path = os.path.join(self._output_dir, str(self.image_index))
         
         if os.path.exists(new_dir_path):
-            print(f"[WARNING] Output directory {new_dir_path} already exists.");
+            self.logger.warning(f"Output directory {new_dir_path} already exists.");
         else:
             os.makedirs(new_dir_path)
         
         # generate images
-        CurveImageGenerator().generate_images(new_dir_path, optimizer_params=response.optimizer_parameters, index=self.image_index)
+        CurveImageGenerator(self.logger).generate_images(new_dir_path, optimizer_params=response.optimizer_parameters, index=self.image_index)
         
         # annotate images
         annotate_images(new_dir_path,  new_dir_path)
