@@ -60,7 +60,7 @@ class MainOrchestrator:
             print(f"Re-prompting for iteration {self._iteration} / {self._max_iterations-1}.")
             prompt = get_reprompt(
                 response.optimizer_parameters, self._image_generator.image_index
-            )
+            ) 
             response = self._llm_manager.prompt(prompt, images_dir)
             self._iteration += 1
 

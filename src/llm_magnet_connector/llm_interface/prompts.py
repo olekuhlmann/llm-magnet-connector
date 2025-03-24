@@ -1,5 +1,11 @@
 from .llm_response import OptimizerParameters
 
+def get_system_prompt():
+    """
+    The system prompt to feed the LLM.
+    """
+    return f"""You are an expert magnet engineer."""
+
 def get_initial_prompt(optimizer_params: OptimizerParameters):
     """
     The initial prompt to feed the LLM.
