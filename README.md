@@ -33,6 +33,12 @@ ANTHROPIC_API_KEY=your_api_key_here
 
 5. Launch ```main.py```
 
+## Authors
+
+Ole Kuhlmann  
+Email: [ole.kuhlmann@rwth-aachen.de](mailto:ole.kuhlmann@rwth-aachen.de)  
+GitHub: [ThatTilux](https://github.com/ThatTilux)
+
 ## License
 
 This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
