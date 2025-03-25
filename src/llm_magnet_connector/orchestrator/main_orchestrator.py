@@ -83,11 +83,12 @@ class MainOrchestrator:
         """
         terminated = False
         badness_criteria = response.badnessCriteria
-        if (
-            not badness_criteria.unrealizable_kinks
-            and not badness_criteria.ends_not_smooth
-            and not badness_criteria.overlapping
-            and not badness_criteria.unreasonable_length
-        ):  # all False
-            terminated = True
+        if badness_criteria is not None:
+            if (
+                not badness_criteria.unrealizable_kinks
+                and not badness_criteria.ends_not_smooth
+                and not badness_criteria.overlapping
+                and not badness_criteria.unreasonable_length
+            ):  # all False
+                terminated = True
         return terminated
