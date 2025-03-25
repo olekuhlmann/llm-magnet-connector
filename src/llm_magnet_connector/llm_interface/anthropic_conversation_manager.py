@@ -21,13 +21,21 @@ class AnthropicConversationManager(LLMConversationManager):
     def __init__(
         self,
         logger,
+        cost_1M_input_tokens,
+        cost_1M_output_tokens,
         system_prompt=None,
         output_token_limit=8000,
         context_window_limit=100_000,
         max_prompts=100,
     ):
         super().__init__(
-            logger, system_prompt, output_token_limit, context_window_limit, max_prompts
+            logger=logger,
+            cost_1M_input_tokens=cost_1M_input_tokens,
+            cost_1M_output_tokens=cost_1M_output_tokens,
+            system_prompt=system_prompt,
+            output_token_limit=output_token_limit,
+            context_window_limit=context_window_limit,
+            max_prompts=max_prompts,
         )
         self.__client = anthropic.Client(api_key=os.environ.get("ANTHROPIC_API_KEY"))
         self._model = "claude-3-7-sonnet-latest"
@@ -35,7 +43,6 @@ class AnthropicConversationManager(LLMConversationManager):
             "type": "enabled",
             "budget_tokens": 2000,
         }
-        self._system_prompt = system_prompt
         self._temperature = 1  # must be 1 when thinking is enabled
         model_token_limit = 64000 if self._thinking else 8192
         self._max_tokens = (
@@ -267,7 +274,7 @@ class AnthropicConversationManager(LLMConversationManager):
         --------------------------------------
         """
         elif message.type == "text":
-            return f"""-------------[MOEDEL ANSWER]-------------
+            return f"""-------------[MODEL ANSWER]-------------
         {message.text}
         --------------------------------------
         """
