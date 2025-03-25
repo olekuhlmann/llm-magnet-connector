@@ -71,8 +71,8 @@ class MainOrchestrator:
             self.logger.info("LLM states conversation as terminated.")
 
         self.logger.info("Conversation finished.")
-        self.logger.info("Input tokens used:", self._llm_manager.usage_input_tokens)
-        self.logger.info("Output tokens used:", self._llm_manager.usage_output_tokens)
+        self.logger.info(f"Input tokens used: {self._llm_manager.usage_input_tokens}")
+        self.logger.info(f"Output tokens used: {self._llm_manager.usage_output_tokens}")
 
     def is_terminated(self, response: LLMResponse) -> bool:
         """
