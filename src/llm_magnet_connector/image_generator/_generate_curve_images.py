@@ -30,7 +30,8 @@ class CurveImageGenerator:
         while not images_found:
             # check if images are there
             images_found = all((dir_path / f"{name}.png").exists() for name in image_names)
-            time.sleep(0.01) # it is intentional here that the system also sleeps when the images were found
+            if not images_found:
+                time.sleep(0.01)
         self.logger.info("Images found.")
             
     
