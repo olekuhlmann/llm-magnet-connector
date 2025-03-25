@@ -121,7 +121,9 @@ class AnthropicConversationManager(LLMConversationManager):
             
 
         # TODO Return the response
-        self.logger.info(response)
+        self.logger.debug(response)
+        for message in response.content:
+            self.logger.info(self.__format_message(message))
         return LLMResponse(
             optimizer_parameters=OptimizerParameters(-1, -1, -1, -1),
             badnessCriteria=BadnessCriteria(True, True, True, True),
@@ -204,3 +206,26 @@ class AnthropicConversationManager(LLMConversationManager):
         text_block = {"type": "text", "text": f"Image {image_name}:"}
 
         return [text_block, image_block]
+
+    def __format_message(self, message) -> str:
+        """
+        Formats a anthropic.ContentBlock to a string.
+
+        Args:
+            message (ContentBlock): The message to format.
+
+        Returns:
+            The formatted message.
+        """
+        if message.type == "thinking":
+            return f"""-------------[THINKING]-------------
+        {message.thinking}
+        --------------------------------------
+        """
+        elif message.type == "text":
+            return f"""-------------[MOEDEL ANSWER]-------------
+        {message.text}
+        --------------------------------------
+        """
+        else:
+            raise ValueError(f"Unknown message type: {type(message)}")
