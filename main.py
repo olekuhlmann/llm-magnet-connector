@@ -46,5 +46,5 @@ image_generator = ResponseToImage(logger, output_dir)
 max_iterations = 100
 orchestrator = MainOrchestrator(llm_manager, image_generator, max_iterations, logger)
 orchestrator.run(
-    get_initial_prompt(OptimizerParameters(9, 80, 20, -8)), "assets/test_scenario1"
+    get_initial_prompt(OptimizerParameters(9, 80, 20, -8)), "assets/test_scenario2"
 )

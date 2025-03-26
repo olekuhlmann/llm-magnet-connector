@@ -2,7 +2,13 @@ from dotenv import load_dotenv
 
 load_dotenv()  # load variables from .env into os.environ
 
-from . import LLMResponse, OptimizerParameters, BadnessCriteria, LLMConversationManager
+from . import (
+    LLMResponse,
+    OptimizerParameters,
+    BadnessCriteria,
+    LLMConversationManager,
+    anthropic_think_tool,
+)
 import os
 import anthropic
 import base64
@@ -27,22 +33,41 @@ class AnthropicConversationManager(LLMConversationManager):
         output_token_limit=8000,
         context_window_limit=100_000,
         max_prompts=100,
+        thinking=False,
+        think_tool=True,
     ):
+        """
+        {}
+        
+        
+        Additional Args:
+            thinking (bool): Whether to enable thinking. Defaults to False.
+            think_tool (bool): Whether to use the "think" tool. Defaults to True. (see https://www.anthropic.com/engineering/claude-think-tool)
+        """.format(
+            LLMConversationManager.__init__.__doc__
+        )
         super().__init__(
             logger=logger,
             cost_1M_input_tokens=cost_1M_input_tokens,
             cost_1M_output_tokens=cost_1M_output_tokens,
             system_prompt=system_prompt,
-            output_token_limit=output_token_limit,
-            context_window_limit=context_window_limit,
             max_prompts=max_prompts,
         )
         self.__client = anthropic.Client(api_key=os.environ.get("ANTHROPIC_API_KEY"))
         self._model = "claude-3-7-sonnet-latest"
-        self._thinking = {
-            "type": "enabled",
-            "budget_tokens": 2000,
-        }
+        if thinking:
+            self._thinking = {
+                "type": "enabled",
+                "budget_tokens": 2000,
+            }
+        else:
+            self._thinking = {"type": "disabled"}
+        self._think_tool = think_tool
+        self._tools = []
+        if self._think_tool:
+            system_prompt_suffix, think_tool_schema = anthropic_think_tool()
+            self._system_prompt = f"{self._system_prompt if self._system_prompt else ''}\n\n{system_prompt_suffix}"
+            self._tools += [think_tool_schema]
         self._temperature = 1  # must be 1 when thinking is enabled
         model_token_limit = 64000 if self._thinking else 8192
         self._max_tokens = (
@@ -56,14 +81,6 @@ class AnthropicConversationManager(LLMConversationManager):
             if context_window_limit == -1
             else min(context_window_limit, model_context_window_limit)
         )
-        min_context_window_limit = 18000
-        if self._context_window_limit < min_context_window_limit:
-            raise ValueError(
-                f"The context window limit must be at least {min_context_window_limit} tokens, as this has proven to be the number of tokens used up by the initial prompt, model answer, and one re-prompt. Please reconfigure."
-            )
-        self._max_prompts = (
-            max_prompts if max_prompts != -1 else 1000
-        )  # hardcoded limit
 
     def _send_message(self, messages: list, system_prompt: str | None = None):
         """
@@ -90,6 +107,7 @@ class AnthropicConversationManager(LLMConversationManager):
             max_tokens=self._max_tokens,
             temperature=self._temperature,
             thinking=self._thinking,
+            tools=self._tools,
         )
 
         self.usage_input_tokens += response.usage.input_tokens
@@ -98,6 +116,58 @@ class AnthropicConversationManager(LLMConversationManager):
         return response
 
     def prompt(self, prompt: str, images_dir: str | None) -> LLMResponse:
+        def send_prompt(new_message) -> LLMResponse:
+            """
+            Local helper function to send the prompt.
+            If the model answers with a tool_use, the function will call itself recursively with the tool use result.
+
+            Args:
+                new_message: The new message to add to the context.
+            """
+            # Add the new message to the context
+            self._add_to_context(new_message)
+
+            # Remove old messages if the context window size is exceeded
+            self._manage_context()
+
+            # Send the message to the model, include system prompt if this is the first prompt
+            system_prompt = self._system_prompt if self._prompt_count == 0 else None
+            response = self._send_message(
+                self._context_to_message(), system_prompt=system_prompt
+            )
+
+            # add response to context
+            self._add_to_context({"role": "assistant", "content": response.content})
+
+            # log the response
+            self.logger.debug(response)
+            for message in response.content:
+                self.logger.info(self.__format_message(message))
+
+            # check stop reason
+            if response.stop_reason == "tool_use":
+                tool_use_blocks = [
+                    block for block in response.content if block.type == "tool_use"
+                ]
+                if len(tool_use_blocks) != 1:
+                    raise ValueError(
+                        f"Expected one tool use block, got {len(tool_use_blocks)} tool use blocks"
+                    )
+                # get new message with tool use result
+                new_message = self._parse_tool_use(tool_use_blocks[0])
+                return send_prompt(new_message)
+
+            if response.stop_reason not in ["end_turn", "tool_use"]:
+                self.logger.warning(
+                    f"The LLM answer was stopped due to stop reason '{response.stop_reason}'."
+                )
+
+            # return the response
+            response = self._parse_response(response)
+            return response
+        
+        ############################################
+
         # Convert images to base64 (with text blocks)
         image_blocks = []
         if images_dir is not None:
@@ -113,72 +183,74 @@ class AnthropicConversationManager(LLMConversationManager):
             "content": image_blocks + [{"type": "text", "text": prompt}],
         }
 
-        # Add the new message to the context
-        self._context.append(new_message)
+        response = send_prompt(new_message)
 
-        # Remove old messages if the context window size is exceeded
-        self._manage_context()
-
-        # Send the message to the model, include system prompt if this is the first prompt
-        system_prompt = self._system_prompt if self._prompt_count == 0 else None
-        response = self._send_message(self._context, system_prompt=system_prompt)
-
-        # add response to context
-        self._context.append({"role": "assistant", "content": response.content})
-
-        # check stop reason
-        if response.stop_reason != "end_turn":
-            self.logger.warning(
-                f"The LLM answer was stopped due to stop reason '{response['stop_reason']}'."
-            )
-
-        # log the response
-        self.logger.debug(response)
-        for message in response.content:
-            self.logger.info(self.__format_message(message))
-
-        # return the response
-        response = self._parse_response(response)
         return response
 
-    def _manage_context(self):
+    def _parse_tool_use(self, tool_use_block):
         """
-        Manages the context by removing old messages. Will always keep the first user message and corresponding model response as well as the latest user message.
-        Removes the the oldest user message and corresponding model response if the context window size is exceeded.
-        """
+        Parses a ToolUseBlock from the LLM and provides the new message to send to the model based on the tool result.
 
+        Args:
+            tool_use_block: The tool use block from the LLM response.
+
+        Returns:
+            The new message to send to the model.
+        """
+        # retrieve properties
+        tool_name = tool_use_block.name
+        tool_input = tool_use_block.input
+        tool_use_id = tool_use_block.id
+
+        if tool_use_block.name == "think":
+            # return empty block to continue the conversation, tool does not provide a new message
+            return {
+                "role": "user",
+                "content": [
+                    {
+                        "type": "tool_result",
+                        "tool_use_id": tool_use_id,
+                    }
+                ],
+            }
+        else:
+            raise ValueError(f"Unknown tool name: {tool_name}")
+
+    def _add_to_context(self, element):
+        if len(self._context) == 0:
+            self._context.append([element])
+        else:
+            # only a user query that does not start with a tool_result should start a new functional element (list)
+            if (
+                element["role"] == "user"
+                and element["content"][0]["type"] != "tool_result"
+            ):
+                self._context.append([element])
+            else:
+                # append to the last list
+                self._context[-1].append(element)
+
+    def _is_context_too_large(self):
         def count_tokens(messages):
             # Calculate the total token count of the context
             response = self.__client.messages.count_tokens(
                 model=self._model,
-                messages=self._context,
+                messages=messages,
                 thinking=self._thinking,
+                tools=self._tools,
             )
 
             return response.input_tokens
 
-        input_tokens = count_tokens(self._context)
+        # calculate input tokens of the context
+        input_tokens = count_tokens(self._context_to_message())
 
-        # Remove the oldest user message and corresponding model response if the context window size is exceeded
-        while (
-            input_tokens > self._context_window_limit * 0.95
-        ):  # count_tokens is not exact, so we use 95% of the limit
-            # never remove the first user message and corresponding model response, never remove the last user message
-            if len(self._context) <= 3:
-                raise ValueError(
-                    "First user message, corresponding model answer and latest user message exceed context window limit. Please reconfigure."
-                )
+        # count_tokens is not exact, so we use 95% of the limit
+        return input_tokens > self._context_window_limit * 0.95
 
-            # remove the oldest user message and corresponding model response, i.e. indices 2, 3
-            if len(self._context) >= 5:
-                self._context.pop(2)
-                self._context.pop(2)
-            else:
-                raise Exception(
-                    "Something went wrong when managing the context window. This should not happen."
-                )
-
-            input_tokens = count_tokens(self._context)
+    def _context_to_message(self):
+        # in this case, the list of lists needs to be flattened
+        return [element for sublist in self._context for element in sublist]
 
     def _image_to_base64_message(image_path):
         """
@@ -270,13 +342,22 @@ class AnthropicConversationManager(LLMConversationManager):
         """
         if message.type == "thinking":
             return f"""-------------[THINKING]-------------
-        {message.thinking}
-        --------------------------------------
-        """
+            {message.thinking}
+            --------------------------------------
+            """
         elif message.type == "text":
-            return f"""-------------[MODEL ANSWER]-------------
-        {message.text}
-        --------------------------------------
-        """
+            return f"""-------------[MODEL RESPONSE]-------------
+            {message.text}
+            --------------------------------------
+            """
+        elif message.type == "tool_use":
+            try:
+                text = message.input["thought"]
+            except KeyError:
+                text = message.input
+            return f"""-------------[{message.name}]-------------
+            {text}
+            --------------------------------------
+            """
         else:
             raise ValueError(f"Unknown message type: {type(message)}")
