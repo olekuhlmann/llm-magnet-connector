@@ -151,19 +151,11 @@ def anthropic_think_tool():
         think_tool: The think tool schema to append to the tool schema.
     """
     
-    system_prompt_suffix = """## Using the think tool
-    
-    Before analysing the given curve to be "bad" or "good" and proposing new optimizer parameters, use the think tool as a scratchpad to:
-    - List the criteria that make the curve "bad"
-    - Analyse what is means to suffice each criterion based on the examples given
-    - Check for each criterion if the given curve suffices it
-    - Plan new optimizer parameters based on the criteria that make the curve "bad"
-    - Verify the impact of changing each parameter on the curve
-    """
+    # no system prompt suffix for now
     
     think_tool = {
         "name": "think",
-        "description": "Use the tool to think about something. It will not obtain new information, but just append the thought to the log.",
+        "description": "Use the tool to think about something. It will not obtain new information, but just append the thought to the log. Use it when making complex decisions.",
         "input_schema": {
             "type": "object",
             "properties": {
@@ -176,4 +168,4 @@ def anthropic_think_tool():
         },
     }
     
-    return system_prompt_suffix, think_tool
+    return "", think_tool
