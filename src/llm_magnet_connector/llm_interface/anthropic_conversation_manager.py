@@ -51,8 +51,6 @@ class AnthropicConversationManager(LLMConversationManager):
             cost_1M_input_tokens=cost_1M_input_tokens,
             cost_1M_output_tokens=cost_1M_output_tokens,
             system_prompt=system_prompt,
-            output_token_limit=output_token_limit,
-            context_window_limit=context_window_limit,
             max_prompts=max_prompts,
         )
         self.__client = anthropic.Client(api_key=os.environ.get("ANTHROPIC_API_KEY"))
@@ -83,14 +81,6 @@ class AnthropicConversationManager(LLMConversationManager):
             if context_window_limit == -1
             else min(context_window_limit, model_context_window_limit)
         )
-        min_context_window_limit = 18000
-        if self._context_window_limit < min_context_window_limit:
-            raise ValueError(
-                f"The context window limit must be at least {min_context_window_limit} tokens, as this has proven to be the number of tokens used up by the initial prompt, model answer, and one re-prompt. Please reconfigure."
-            )
-        self._max_prompts = (
-            max_prompts if max_prompts != -1 else 1000
-        )  # hardcoded limit
 
     def _send_message(self, messages: list, system_prompt: str | None = None):
         """
@@ -135,23 +125,25 @@ class AnthropicConversationManager(LLMConversationManager):
                 new_message: The new message to add to the context.
             """
             # Add the new message to the context
-            self._context.append(new_message)
+            self._add_to_context(new_message)
 
             # Remove old messages if the context window size is exceeded
             self._manage_context()
 
             # Send the message to the model, include system prompt if this is the first prompt
             system_prompt = self._system_prompt if self._prompt_count == 0 else None
-            response = self._send_message(self._context, system_prompt=system_prompt)
+            response = self._send_message(
+                self._context_to_message(), system_prompt=system_prompt
+            )
 
             # add response to context
-            self._context.append({"role": "assistant", "content": response.content})
+            self._add_to_context({"role": "assistant", "content": response.content})
 
             # log the response
             self.logger.debug(response)
             for message in response.content:
                 self.logger.info(self.__format_message(message))
-                
+
             # check stop reason
             if response.stop_reason == "tool_use":
                 tool_use_blocks = [
@@ -170,10 +162,11 @@ class AnthropicConversationManager(LLMConversationManager):
                     f"The LLM answer was stopped due to stop reason '{response.stop_reason}'."
                 )
 
-
             # return the response
             response = self._parse_response(response)
             return response
+        
+        ############################################
 
         # Convert images to base64 (with text blocks)
         image_blocks = []
@@ -213,52 +206,51 @@ class AnthropicConversationManager(LLMConversationManager):
             # return empty block to continue the conversation, tool does not provide a new message
             return {
                 "role": "user",
-                "content": [{
-                    "type": "tool_result",
-                    "tool_use_id": tool_use_id,
-                }],
+                "content": [
+                    {
+                        "type": "tool_result",
+                        "tool_use_id": tool_use_id,
+                    }
+                ],
             }
         else:
             raise ValueError(f"Unknown tool name: {tool_name}")
 
-    def _manage_context(self):
-        """
-        Manages the context by removing old messages. Will always keep the first user message and corresponding model response as well as the latest user message.
-        Removes the the oldest user message and corresponding model response if the context window size is exceeded.
-        """
+    def _add_to_context(self, element):
+        if len(self._context) == 0:
+            self._context.append([element])
+        else:
+            # only a user query that does not start with a tool_result should start a new functional element (list)
+            if (
+                element["role"] == "user"
+                and element["content"][0]["type"] != "tool_result"
+            ):
+                self._context.append([element])
+            else:
+                # append to the last list
+                self._context[-1].append(element)
 
+    def _is_context_too_large(self):
         def count_tokens(messages):
             # Calculate the total token count of the context
             response = self.__client.messages.count_tokens(
                 model=self._model,
-                messages=self._context,
+                messages=messages,
                 thinking=self._thinking,
+                tools=self._tools,
             )
 
             return response.input_tokens
 
-        input_tokens = count_tokens(self._context)
+        # calculate input tokens of the context
+        input_tokens = count_tokens(self._context_to_message())
 
-        # Remove the oldest user message and corresponding model response if the context window size is exceeded
-        while (
-            input_tokens > self._context_window_limit * 0.95
-        ):  # count_tokens is not exact, so we use 95% of the limit
-            # never remove the first user message and corresponding model response, never remove the last user message
-            if len(self._context) <= 3:
-                raise ValueError(
-                    "First user message, corresponding model answer and latest user message exceed context window limit. Please reconfigure."
-                )
+        # count_tokens is not exact, so we use 95% of the limit
+        return input_tokens > self._context_window_limit * 0.95
 
-            # remove the oldest user message and corresponding model response, i.e. indices 2, 3
-            if len(self._context) >= 5:
-                self._context.pop(2)
-                self._context.pop(2)
-            else:
-                raise Exception(
-                    "Something went wrong when managing the context window. This should not happen."
-                )
-
-            input_tokens = count_tokens(self._context)
+    def _context_to_message(self):
+        # in this case, the list of lists needs to be flattened
+        return [element for sublist in self._context for element in sublist]
 
     def _image_to_base64_message(image_path):
         """
