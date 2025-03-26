@@ -1,5 +1,11 @@
 from .llm_response import OptimizerParameters
 
+def get_system_prompt():
+    """
+    The system prompt to feed the LLM.
+    """
+    return f"""You are an expert magnet engineer."""
+
 def get_initial_prompt(optimizer_params: OptimizerParameters):
     """
     The initial prompt to feed the LLM.
@@ -68,7 +74,7 @@ We state if the curve is "good" or "bad".
 
 - Next we decide how to proceed based on the assessment of the "goodness".
 
-If the curve is "good", we are done and do not proceed with the rest of the procedure. We state that we are done.
+If the curve is "good", we are done and do not proceed with the rest of the procedure. We state "DONE" to indicate that we are done.
 
 If the curve is "bad", we proceed. We state that we will proceed.
 
@@ -92,7 +98,10 @@ Please remember the following:
 
 - After finding a criterion making the curve "bad", also analyse the remaining criteria.
 
-- The final answer will be the new optimizer parameters or that we are done.
+- The final answer will be the either "DONE" or the new optimizer parameters.
+
+- The final answer is the end of the message.
+
 
 In the picture marked "Z", there are the two parts of the magnet model needing a connector.
 

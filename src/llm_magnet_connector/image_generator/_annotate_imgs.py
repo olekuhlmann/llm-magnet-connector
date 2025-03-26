@@ -2,6 +2,7 @@ from PIL import Image, ImageDraw, ImageFont
 import numpy as np
 import os
 import glob
+import time
 
 
 def _add_text_to_image(
@@ -138,7 +139,15 @@ def annotate_images(input_dir, output_dir):
         base_name = os.path.splitext(os.path.basename(input_path))[0]
         output_path = os.path.join(output_dir, os.path.basename(input_path))
         
-        # Annotate the image using the annotate_img function.
-        _annotate_img(input_path, output_path, base_name)
+        # Annotate the image using the annotate_img function. Try 3 times as the image may be in use for a short time.
+        for attempt in range(3):
+            try:
+                _annotate_img(input_path, output_path, base_name)
+                break
+            except Exception as ex:
+                if attempt < 2:  # Retry for the first 2 attempts
+                    time.sleep(0.3)
+                else:
+                    raise ex  # Raise the exception after 3 failed attempts
 
 

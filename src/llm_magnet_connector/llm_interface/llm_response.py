@@ -37,4 +37,7 @@ class LLMResponse:
         self.optimizer_parameters = optimizer_parameters
         self.badnessCriteria = badnessCriteria
     
+    def __str__(self):
+        return f"{self.optimizer_parameters}, {self.badnessCriteria}"
+    
     
