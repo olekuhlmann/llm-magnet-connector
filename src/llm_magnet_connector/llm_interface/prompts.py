@@ -46,7 +46,7 @@ def get_initial_prompt(optimizer_params: OptimizerParameters):
 - order. This parameter defines the complexity of the curve generated.
 - ell. This parameter defines the requested length of the curve.
 - rbendmin. This parameter defines the requested minimum curvature radius for the curve.
-- t1. This parameter defines the tolerance for minimizing edge regressions. Egde regressions cause unrealizable deformations.
+- t1. This parameter defines the tolerance for minimizing edge regressions. Edge regressions cause unrealizable deformations.
 
 4) The optimizer parameters are always given in a list with the format [order, ell, rbendmin, t1]. An example is [7, 100, 15, -8].
 
