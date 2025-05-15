@@ -9,7 +9,7 @@ To use this application, follow these steps.
 
 1. Clone this repository:
 ```sh
-git clone https://github.com/ThatTilux/llm-magnet-connector.git
+git clone https://github.com/olekuhlmann/llm-magnet-connector.git
 cd llm-magnet-connector
 ```  
 
@@ -37,7 +37,7 @@ ANTHROPIC_API_KEY=your_api_key_here
 
 Ole Kuhlmann  
 Email: [ole.kuhlmann@rwth-aachen.de](mailto:ole.kuhlmann@rwth-aachen.de)  
-GitHub: [ThatTilux](https://github.com/ThatTilux)
+GitHub: [olekuhlmann](https://github.com/olekuhlmann)
 
 ## License
 
