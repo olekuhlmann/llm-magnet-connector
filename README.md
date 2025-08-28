@@ -1,8 +1,9 @@
 # LLM Magnet Connector
 
 This application automates connecting two parts of a magnet model using LLMs.
+This project is part of a collaboration between CERN and Cleverdist SA under the FCC-ee HTS4 research project at CERN. 
 
-This project is part of a collaboration between CERN and Cleverdist SA under the FCC-ee HTS4 research project at CERN.
+Details on this project are not disclosed to the public at this time.
 
 ## Usage
 To use this application, follow these steps.
